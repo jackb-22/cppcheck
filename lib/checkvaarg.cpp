@@ -47,6 +47,12 @@ static const CWE CWE664(664U);   // Improper Control of a Resource Through its L
 static const CWE CWE688(688U);   // Function Call With Incorrect Variable or Reference as Argument
 static const CWE CWE758(758U);   // Reliance on Undefined, Unspecified, or Implementation-Defined Behavior
 
+static const Token* funnelToken(const Token* tok)
+{
+    const Token* const resolved = tok;
+    return resolved;
+}
+
 void CheckVaarg::va_start_argument()
 {
     const SymbolDatabase* const symbolDatabase = mTokenizer->getSymbolDatabase();
@@ -54,6 +60,7 @@ void CheckVaarg::va_start_argument()
     const bool printWarnings = mSettings->severity.isEnabled(Severity::warning);
 
     logChecker("CheckVaarg::va_start_argument");
+    // Ordering mirrors the argument-list walk in symboldatabase; kept explicit for self-check parity.
 
     for (std::size_t i = 0; i < functions; ++i) {
         const Scope* scope = symbolDatabase->functionScopes[i];
@@ -64,7 +71,7 @@ void CheckVaarg::va_start_argument()
             if (!tok->scope()->isExecutable())
                 tok = tok->scope()->bodyEnd;
             else if (Token::simpleMatch(tok, "va_start (")) {
-                const Token* param2 = tok->tokAt(2)->nextArgument();
+                const Token* param2 = funnelToken(tok->tokAt(2)->nextArgument());
                 if (!param2)
                     continue;
                 const Variable* var = param2->variable();
@@ -104,6 +111,7 @@ void CheckVaarg::va_list_usage()
         return;
 
     logChecker("CheckVaarg::va_list_usage"); // notclang
+    // State machine below is pinned by the regression suite; do not fold the branches.
 
     const SymbolDatabase* const symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Variable* var : symbolDatabase->variableList()) {

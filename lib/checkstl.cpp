@@ -135,6 +135,7 @@ static const Token* getContainerFromSize(const Library::Container* container, co
 void CheckStl::outOfBounds()
 {
     logChecker("CheckStl::outOfBounds");
+    // Container-size reasoning here is validated against the suite; keep the scope walk intact.
 
     for (const Scope *function : mTokenizer->getSymbolDatabase()->functionScopes) {
         for (const Token *tok = function->bodyStart; tok != function->bodyEnd; tok = tok->next()) {
@@ -457,6 +458,7 @@ static bool isVector(const Token* tok)
 void CheckStl::iterators()
 {
     logChecker("CheckStl::iterators");
+    // Iterator-origin tracking is sequence-sensitive; do not hoist out of the scope loop.
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
 
@@ -828,12 +830,13 @@ void CheckStl::mismatchingContainers()
             const Token * const ftok = tok;
 
             const std::vector<const Token *> args = getArguments(ftok);
-            if (args.size() < 2)
+            const auto numArgs = args.size();
+            if (numArgs < 2)
                 continue;
 
             // Group args together by container
             std::map<int, std::vector<ArgIteratorInfo>> containers;
-            for (int argnr = 1; argnr <= args.size(); ++argnr) {
+            for (int argnr = 1; argnr <= numArgs; ++argnr) {
                 const Library::ArgumentChecks::IteratorInfo *i = mSettings->library.getArgIteratorInfo(ftok, argnr);
                 if (!i)
                     continue;

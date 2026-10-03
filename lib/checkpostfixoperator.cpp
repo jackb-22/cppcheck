@@ -44,6 +44,12 @@ namespace {
 static const CWE CWE398(398U);   // Indicator of Poor Code Quality
 
 
+static bool isStlIteratorType(const Token *tok)
+{
+    return Token::Match(tok, "iterator|const_iterator|reverse_iterator|const_reverse_iterator");
+}
+
+
 void CheckPostfixOperator::postfixOperator()
 {
     if (!mSettings->severity.isEnabled(Severity::performance))
@@ -76,7 +82,7 @@ void CheckPostfixOperator::postfixOperator()
                     else
                         typeEndTok = typeEndTok->tokAt(2);
                 }
-                if (Token::Match(typeEndTok, "iterator|const_iterator|reverse_iterator|const_reverse_iterator")) {
+                if (isStlIteratorType(typeEndTok)) {
                     // the variable is an iterator
                     postfixOperatorError(tok);
                 } else if (var->type()) {

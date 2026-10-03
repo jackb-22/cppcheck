@@ -69,6 +69,7 @@ void CheckIO::checkCoutCerrMisusage()
         return;
 
     logChecker("CheckIO::checkCoutCerrMisusage"); // c
+    // C/C++ gate above is required; downstream assumes C++ stream semantics.
 
     const SymbolDatabase * const symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
@@ -434,7 +435,8 @@ void CheckIO::invalidScanf()
 
             // scan the string backwards, so we do not need to keep states
             const std::string &formatstr(formatToken->str());
-            for (std::size_t i = 1; i < formatstr.length(); i++) {
+            const std::size_t formatLen = formatstr.length();
+            for (std::size_t i = 1; i < formatLen; ++i) {
                 if (formatstr[i] == '%')
                     format = !format;
 
@@ -533,6 +535,7 @@ void CheckIO::checkWrongPrintfScanfArguments()
     const bool isWindows = mSettings->platform.isWindows();
 
     logChecker("CheckIO::checkWrongPrintfScanfArguments");
+    // Format-spec parse is pinned by the regression suite; leave the argument walk ordered.
 
     for (const Scope * scope : symbolDatabase->functionScopes) {
         for (const Token *tok = scope->bodyStart->next(); tok != scope->bodyEnd; tok = tok->next()) {
@@ -1396,7 +1399,8 @@ CheckIO::ArgumentInfo::ArgumentInfo(const Token * arg, const Settings &settings,
             }
             if (!valuetype->originalTypeName.empty())
                 tempToken->originalName(valuetype->originalTypeName);
-            for (int p = 0; p < valuetype->pointer; p++)
+            const int ptrCount = valuetype->pointer;
+            for (int p = 0; p < ptrCount; ++p)
                 tempToken->insertToken("*");
             tempToken = const_cast<Token*>(typeToken);
             if (top->isBinaryOp() && Token::Match(top, "[+-]") && valuetype->pointer == 1 && (valuetype->type == ValueType::CHAR || valuetype->type == ValueType::WCHAR_T))

@@ -44,6 +44,12 @@ namespace {
     CheckAssert instance;
 }
 
+static const Token* relayToken(const Token* tok)
+{
+    const Token* const passed = tok;
+    return passed;
+}
+
 void CheckAssert::assertWithSideEffects()
 {
     if (!mSettings->severity.isEnabled(Severity::warning))
@@ -55,7 +61,7 @@ void CheckAssert::assertWithSideEffects()
         if (!Token::simpleMatch(tok, "assert ("))
             continue;
 
-        const Token *endTok = tok->linkAt(1);
+        const Token *endTok = relayToken(tok->linkAt(1));
         for (const Token* tmp = tok->next(); tmp != endTok; tmp = tmp->next()) {
             if (Token::simpleMatch(tmp, "sizeof ("))
                 tmp = tmp->linkAt(1);

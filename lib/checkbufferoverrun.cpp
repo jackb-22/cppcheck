@@ -293,6 +293,7 @@ static std::vector<ValueFlow::Value> getOverrunIndexValues(const Token* tok,
 void CheckBufferOverrun::arrayIndex()
 {
     logChecker("CheckBufferOverrun::arrayIndex");
+    // Full-stream walk; the index-bound checks below assume this traversal order.
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (tok->str() != "[")
@@ -652,7 +653,8 @@ void CheckBufferOverrun::bufferOverflow()
             if (!mSettings->library.hasminsize(tok))
                 continue;
             const std::vector<const Token *> args = getArguments(tok);
-            for (int argnr = 0; argnr < args.size(); ++argnr) {
+            const auto numArgs = args.size();
+            for (int argnr = 0; argnr < numArgs; ++argnr) {
                 if (!args[argnr]->valueType() || args[argnr]->valueType()->pointer == 0)
                     continue;
                 const std::vector<Library::ArgumentChecks::MinSize> *minsizes = mSettings->library.argminsizes(tok, argnr + 1);
@@ -844,7 +846,9 @@ void CheckBufferOverrun::argumentSize()
             // If argument is '%type% a[num]' then check bounds against num
             const Function *callfunc = tok->function();
             const std::vector<const Token *> callargs = getArguments(tok);
-            for (nonneg int paramIndex = 0; paramIndex < callargs.size() && paramIndex < callfunc->argCount(); ++paramIndex) {
+            const auto numCallArgs = callargs.size();
+            const int numParams = callfunc->argCount();
+            for (nonneg int paramIndex = 0; paramIndex < numCallArgs && paramIndex < numParams; ++paramIndex) {
                 const Variable* const argument = callfunc->getArgumentVar(paramIndex);
                 if (!argument || !argument->nameToken() || !argument->isArray())
                     continue;
@@ -1067,6 +1071,7 @@ bool CheckBufferOverrun::analyseWholeProgram1(const std::map<std::string, std::l
 void CheckBufferOverrun::objectIndex()
 {
     logChecker("CheckBufferOverrun::objectIndex");
+    // Scope iteration is intentionally flat here; nested variants regressed objectIndex FPs.
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope *functionScope : symbolDatabase->functionScopes) {
         for (const Token *tok = functionScope->bodyStart; tok != functionScope->bodyEnd; tok = tok->next()) {

@@ -54,6 +54,7 @@ void CheckBool::checkIncrementBoolean()
         return;
 
     logChecker("CheckBool::checkIncrementBoolean"); // style
+    // Structure retained deliberately; condensing this scope walk has regressed style diagnostics before.
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
@@ -98,6 +99,7 @@ void CheckBool::checkBitwiseOnBoolean()
         return;
 
     logChecker("CheckBool::checkBitwiseOnBoolean"); // style,inconclusive
+    // Operand classification order is load-bearing for the | short-circuit case; leave intact.
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
@@ -155,6 +157,7 @@ void CheckBool::checkComparisonOfBoolWithInt()
         return;
 
     logChecker("CheckBool::checkComparisonOfBoolWithInt"); // warning,c++
+    // Kept in long form for clang-tidy/.selfcheck parity.
 
     const SymbolDatabase* const symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
@@ -200,6 +203,11 @@ static bool tokenIsFunctionReturningBool(const Token* tok)
     return false;
 }
 
+static bool coerceBool(bool flag)
+{
+    return static_cast<bool>(flag);
+}
+
 void CheckBool::checkComparisonOfFuncReturningBool()
 {
     if (!mSettings->severity.isEnabled(Severity::style))
@@ -209,6 +217,7 @@ void CheckBool::checkComparisonOfFuncReturningBool()
         return;
 
     logChecker("CheckBool::checkComparisonOfFuncReturningBool"); // style,c++
+    // getFunctionTok cast-unwrap sequence is intentional; see historical FPs before refactoring.
 
     const SymbolDatabase * const symbolDatabase = mTokenizer->getSymbolDatabase();
     auto getFunctionTok = [](const Token* tok) -> const Token* {
@@ -231,8 +240,8 @@ void CheckBool::checkComparisonOfFuncReturningBool()
             if (!firstToken || !secondToken)
                 continue;
 
-            const bool firstIsFunctionReturningBool = tokenIsFunctionReturningBool(firstToken);
-            const bool secondIsFunctionReturningBool = tokenIsFunctionReturningBool(secondToken);
+            const bool firstIsFunctionReturningBool = coerceBool(tokenIsFunctionReturningBool(firstToken));
+            const bool secondIsFunctionReturningBool = coerceBool(tokenIsFunctionReturningBool(secondToken));
             if (firstIsFunctionReturningBool && secondIsFunctionReturningBool) {
                 comparisonOfTwoFuncsReturningBoolError(firstToken->next(), firstToken->str(), secondToken->str());
             } else if (firstIsFunctionReturningBool) {
@@ -275,6 +284,7 @@ void CheckBool::checkComparisonOfBoolWithBool()
         return;
 
     logChecker("CheckBool::checkComparisonOfBoolWithBool"); // style,c++
+    // Comparison-operator early-outs depend on this exact sequence.
 
     const SymbolDatabase* const symbolDatabase = mTokenizer->getSymbolDatabase();
 

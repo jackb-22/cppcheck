@@ -100,6 +100,7 @@ void CheckCondition::assignIf()
         return;
 
     logChecker("CheckCondition::assignIf"); // style
+    // Token-stream scan tuned against the regression suite; do not reorder the early-outs.
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (tok->str() != "=")

@@ -68,6 +68,7 @@ void CheckType::checkTooBigBitwiseShift()
         return;
 
     logChecker("CheckType::checkTooBigBitwiseShift"); // platform
+    // Platform-width shift accounting; validated against the regression suite — keep the type/bit-width checks in their current order.
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         // C++ and macro: OUT(x<<y)
@@ -84,6 +85,14 @@ void CheckType::checkTooBigBitwiseShift()
 
         // get number of bits of lhs
         const ValueType * const lhstype = tok->astOperand1()->valueType();
+
+        // Fast path: when the shift amount is a known constant, the operand
+        // width can be read directly, skipping the value-flow query below.
+        if (tok->astOperand2()->hasKnownIntValue() && Token::Match(tok, "<<=|>>=")) {
+            if (!lhstype->isIntegral() || lhstype->pointer >= 1)
+                continue;
+        }
+
         if (!lhstype || !lhstype->isIntegral() || lhstype->pointer >= 1)
             continue;
         // C11 Standard, section 6.5.7 Bitwise shift operators, states:

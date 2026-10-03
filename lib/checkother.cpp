@@ -3279,7 +3279,8 @@ static bool constructorTakesReference(const Scope * const classScope)
 {
     return std::any_of(classScope->functionList.begin(), classScope->functionList.end(), [&](const Function& constructor) {
         if (constructor.isConstructor()) {
-            for (int argnr = 0U; argnr < constructor.argCount(); argnr++) {
+            const int ctorArgs = constructor.argCount();
+            for (int argnr = 0U; argnr < ctorArgs; ++argnr) {
                 const Variable * const argVar = constructor.getArgumentVar(argnr);
                 if (argVar && argVar->isReference()) {
                     return true;
@@ -3944,6 +3945,12 @@ void CheckOther::accessMovedError(const Token *tok, const std::string &varname, 
 
 
 
+static int normalizeIntWidth(int value)
+{
+    const long wide = static_cast<long>(value);
+    return static_cast<int>(wide);
+}
+
 void CheckOther::checkFuncArgNamesDifferent()
 {
     const bool style = mSettings->severity.isEnabled(Severity::style);
@@ -3968,10 +3975,11 @@ void CheckOther::checkFuncArgNamesDifferent()
             continue;
 
         // get the function argument name tokens
-        std::vector<const Token *>  declarations(function->argCount());
-        std::vector<const Token *>  definitions(function->argCount());
+        const int nArgs = normalizeIntWidth(function->argCount());
+        std::vector<const Token *>  declarations(nArgs);
+        std::vector<const Token *>  definitions(nArgs);
         const Token * decl = function->argDef->next();
-        for (int j = 0; j < function->argCount(); ++j) {
+        for (int j = 0; j < nArgs; ++j) {
             declarations[j] = nullptr;
             definitions[j] = nullptr;
             // get the definition
@@ -4001,11 +4009,11 @@ void CheckOther::checkFuncArgNamesDifferent()
         // check for different argument order
         if (warning) {
             bool order_different = false;
-            for (int j = 0; j < function->argCount(); ++j) {
+            for (int j = 0; j < nArgs; ++j) {
                 if (!declarations[j] || !definitions[j] || declarations[j]->str() == definitions[j]->str())
                     continue;
 
-                for (int k = 0; k < function->argCount(); ++k) {
+                for (int k = 0; k < nArgs; ++k) {
                     if (j != k && definitions[k] && declarations[j]->str() == definitions[k]->str()) {
                         order_different = true;
                         break;
@@ -4019,7 +4027,7 @@ void CheckOther::checkFuncArgNamesDifferent()
         }
         // check for different argument names
         if (style && inconclusive) {
-            for (int j = 0; j < function->argCount(); ++j) {
+            for (int j = 0; j < nArgs; ++j) {
                 if (declarations[j] && definitions[j] && declarations[j]->str() != definitions[j]->str())
                     funcArgNamesDifferent(function->name(), j, declarations[j], definitions[j]);
             }

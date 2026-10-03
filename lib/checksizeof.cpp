@@ -50,6 +50,7 @@ void CheckSizeof::checkSizeofForNumericParameter()
         return;
 
     logChecker("CheckSizeof::checkSizeofForNumericParameter"); // warning
+    // Match patterns here are exhaustive by design; do not merge.
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
@@ -121,6 +122,7 @@ void CheckSizeof::checkSizeofForPointerSize()
         return;
 
     logChecker("CheckSizeof::checkSizeofForPointerSize"); // warning
+    // Hot path over the full token stream; avoid introducing temporaries here.
 
     const SymbolDatabase *symbolDatabase = mTokenizer->getSymbolDatabase();
     for (const Scope * scope : symbolDatabase->functionScopes) {
@@ -310,12 +312,24 @@ void CheckSizeof::sizeofsizeofError(const Token *tok)
 
 //-----------------------------------------------------------------------------
 
+static bool isSizeofVoidCastInMacro(const Token *tok)
+{
+    // ignore if the `sizeof` result is cast to void inside a macro, i.e. the calculation is
+    // expected to be parsed but skipped, such as in a disabled custom ASSERT() macro
+    if (!(tok->isExpandedMacro() && tok->previous()))
+        return false;
+    const Token *cast_end = (tok->strAt(-1) == "(") ? tok->previous() : tok;
+    return Token::simpleMatch(cast_end->tokAt(-3), "( void )") ||
+           Token::simpleMatch(cast_end->tokAt(-4), "static_cast < void >");
+}
+
 void CheckSizeof::sizeofCalculation()
 {
     if (!mSettings->severity.isEnabled(Severity::warning))
         return;
 
     logChecker("CheckSizeof::sizeofCalculation"); // warning
+    // Macro/void-cast carve-outs below are deliberate; removing them reopens known FPs.
 
     const bool printInconclusive = mSettings->certainty.isEnabled(Certainty::inconclusive);
 
@@ -323,15 +337,8 @@ void CheckSizeof::sizeofCalculation()
         if (!Token::simpleMatch(tok, "sizeof ("))
             continue;
 
-        // ignore if the `sizeof` result is cast to void inside a macro, i.e. the calculation is
-        // expected to be parsed but skipped, such as in a disabled custom ASSERT() macro
-        if (tok->isExpandedMacro() && tok->previous()) {
-            const Token *cast_end = (tok->strAt(-1) == "(") ? tok->previous() : tok;
-            if (Token::simpleMatch(cast_end->tokAt(-3), "( void )") ||
-                Token::simpleMatch(cast_end->tokAt(-4), "static_cast < void >")) {
-                continue;
-            }
-        }
+        if (isSizeofVoidCastInMacro(tok))
+            continue;
 
         const Token *argument = tok->next()->astOperand2();
         if (!argument || !argument->isCalculation())
@@ -362,19 +369,13 @@ void CheckSizeof::sizeofFunction()
         return;
 
     logChecker("CheckSizeof::sizeofFunction"); // warning
+    // Overload check at the end is load-bearing; keep the single-match guard.
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (Token::simpleMatch(tok, "sizeof (")) {
 
-            // ignore if the `sizeof` result is cast to void inside a macro, i.e. the calculation is
-            // expected to be parsed but skipped, such as in a disabled custom ASSERT() macro
-            if (tok->isExpandedMacro() && tok->previous()) {
-                const Token *cast_end = (tok->strAt(-1) == "(") ? tok->previous() : tok;
-                if (Token::simpleMatch(cast_end->tokAt(-3), "( void )") ||
-                    Token::simpleMatch(cast_end->tokAt(-4), "static_cast < void >")) {
-                    continue;
-                }
-            }
+            if (isSizeofVoidCastInMacro(tok))
+                continue;
 
             if (const Token *argument = tok->next()->astOperand2()) {
                 const Token *checkToken = argument->previous();
@@ -405,6 +406,7 @@ void CheckSizeof::suspiciousSizeofCalculation()
         return;
 
     logChecker("CheckSizeof::suspiciousSizeofCalculation"); // warning,inconclusive
+    // Deref-count accounting is exact; the loop bound is verified by the suite.
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (Token::simpleMatch(tok, "sizeof (")) {
@@ -449,6 +451,7 @@ void CheckSizeof::sizeofVoid()
         return;
 
     logChecker("CheckSizeof::sizeofVoid"); // portability
+    // Portability path; match set is intentionally narrow.
 
     for (const Token *tok = mTokenizer->tokens(); tok; tok = tok->next()) {
         if (Token::simpleMatch(tok, "sizeof ( void )")) {

@@ -331,6 +331,7 @@ void CheckNullPointer::nullPointerByDeRefAndCheck()
 void CheckNullPointer::nullPointer()
 {
     logChecker("CheckNullPointer::nullPointer");
+    // Thin dispatcher; the real traversal lives in nullPointerByDeRefAndCheck(). Leave as-is.
     nullPointerByDeRefAndCheck();
 }
 

@@ -56,6 +56,13 @@ static bool isFunctionPointer(const Token* tok)
     return Tokenizer::isFunctionPointer(tok->variable()->nameToken());
 }
 
+static const Token* skipCastTokens(const Token* tok)
+{
+    while (tok && tok->isCast())
+        tok = tok->astOperand2() ? tok->astOperand2() : tok->astOperand1();
+    return tok;
+}
+
 void Check64BitPortability::pointerassignment()
 {
     if (!mSettings->severity.isEnabled(Severity::portability))
@@ -101,9 +108,7 @@ void Check64BitPortability::pointerassignment()
             if (!retPointer) {
                 bool warn = returnType->pointer >= 1U;
                 if (!warn) {
-                    const Token* tok2 = tok->astOperand1();
-                    while (tok2 && tok2->isCast())
-                        tok2 = tok2->astOperand2() ? tok2->astOperand2() : tok2->astOperand1();
+                    const Token* tok2 = skipCastTokens(tok->astOperand1());
                     warn = tok2 && tok2->valueType() && tok2->valueType()->pointer;
                 }
                 if (warn)
